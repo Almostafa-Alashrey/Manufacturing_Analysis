@@ -88,7 +88,18 @@ JOIN dim_machine m
 GROUP BY fa.Factory_id
 ORDER BY machines_num DESC;
 
---Q04. 
+--Q04. Which factories have the highest average machine age and variety?
+SELECT  fa.Factory_id
+       ,ROUND(AVG(m.machine_age * 1.0), 1) AS avg_machine_age
+       ,COUNT(DISTINCT m.machine_type) AS machine_types_count
+       ,COUNT(DISTINCT f.machine_key) AS total_machines
+FROM fact_maintenance f
+JOIN dim_factory fa
+     ON f.factory_key = fa.factory_key
+JOIN dim_machine m
+     ON f.machine_key = m.machine_key
+GROUP BY fa.Factory_id
+ORDER BY total_machines DESC;
 
 ------------------------------------------------------------
 -- 02. Machine utilization & downtime Failure  analysis
