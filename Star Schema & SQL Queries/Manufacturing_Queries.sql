@@ -7,23 +7,20 @@
 2. Machine Utilization & Downtime and Failure Analysis
         Purpose: Deep-dive into machine performance, identify problem areas, and analyze root causes of failures.
 
-3. OEE-Style Analysis (Overall Equipment Effectiveness)
-        Purpose: Measure manufacturing efficiency using OEE.
-
-4.Time Trend Analysis
+3.Time Trend Analysis
         Purpose: Track performance metrics over time to spot patterns or recurring issues.
 
-5.ENERGY,Production & Healthy Analysis 
+4.ENERGY,Production & Healthy Analysis 
         Purpose: Assess how machine health and energy usage impact overall production output.
 
-6. Database Views:
+5. Database Views:
        -vw_machine_performance
        -vw_factory_overview
  
-7. Stored Procedures
+6. Stored Procedures
        -usp_ManufacturingProcedures (@StartDate, @EndDate)
 
-8. Key Performance Indicators (KPIs):
+7. Key Performance Indicators (KPIs):
        -total_monitoring_records
        -total_active_machines
        -total_factors
@@ -423,74 +420,10 @@ WHERE rnk <= 3
 ORDER BY factory_id, rnk;
 
 ------------------------------------------------------------
--- 03.  OEE-STYLE ANALYSIS
+-- 03.   TIME TREND ANALYSIS
 ------------------------------------------------------------
 
--- Q21.What is the overall OEE score across each factory?
-SELECT 
-     fa.factory_id
-    ,ROUND(100.0 * (1.0 - SUM(m.downtime_hours) / NULLIF(SUM(m.shift_hours), 0)), 2) AS availability_pct
-    ,ROUND(AVG(m.production_rate), 2) AS performance_pct
-    ,ROUND(
-        (100.0 * (1.0 - SUM(m.downtime_hours) / NULLIF(SUM(m.shift_hours), 0))) 
-        * AVG(m.production_rate) / 100.0
-     , 2) AS oee_lite_pct
-FROM fact_maintenance m
-JOIN dim_factory fa 
-    ON fa.factory_key = m.factory_key
-GROUP BY fa.factory_id
-ORDER BY oee_lite_pct ASC;
-
--- Q22. Which machine types achieve the highest and lowest OEE scores?
-SELECT 
-     m.machine_type
-    ,COUNT(DISTINCT m.machine_key) machine_count
-    ,ROUND(100.0 * (1.0 - SUM(f.downtime_hours) / NULLIF(SUM(f.shift_hours), 0)), 2)  availability_pct
-    ,ROUND(AVG(f.production_rate), 2)  performance_pct
-    ,ROUND(
-        (100.0 * (1.0 - SUM(f.downtime_hours) / NULLIF(SUM(f.shift_hours), 0))) 
-        * AVG(f.production_rate) / 100.0
-     , 2) AS oee_lite_pct
-FROM fact_maintenance f
-JOIN dim_machine m 
-     ON m.machine_key = f.machine_key
-GROUP BY m.machine_type
-ORDER BY oee_lite_pct DESC;
-
--- Q23. Which individual machines are the worst performers in terms of Availability?
-SELECT TOP 10
-     m.machine_id
-    ,m.machine_type
-    ,m.manufacturer
-    ,SUM(f.downtime_hours) AS total_downtime_hours
-    ,SUM(f.shift_hours) AS total_shift_hours
-    ,ROUND(100.0 * (1.0 - SUM(f.downtime_hours) / NULLIF(SUM(m.shift_hours), 0)), 2) AS availability_pct
-FROM fact_maintenance f
-JOIN dim_machine m 
-     ON m.machine_key = f.machine_key
-GROUP BY m.machine_id, m.machine_type, m.manufacturer
-ORDER BY availability_pct ASC;
-
--- Q23. How does OEE vary across different factory shifts ?
-SELECT 
-     s.factory_shift
-    ,ROUND(100.0 * (1.0 - SUM(f.downtime_hours) / NULLIF(SUM(f.shift_hours), 0)), 2) AS availability_pct
-    ,ROUND(AVG(f.production_rate), 2) AS performance_pct
-    ,ROUND(
-        (100.0 * (1.0 - SUM(f.downtime_hours) / NULLIF(SUM(f.shift_hours), 0))) 
-        * AVG(f.production_rate) / 100.0
-     , 2) AS oee_lite_pct
-FROM fact_maintenance f
-JOIN dim_shift s 
-     ON s.shift_key = f.shift_key
-GROUP BY s.factory_shift
-ORDER BY oee_lite_pct DESC;
-
-------------------------------------------------------------
--- 04.   TIME TREND ANALYSIS
-------------------------------------------------------------
-
--- Q24. Daily trend: failures, failure rate and downtime
+-- Q21. Daily trend: failures, failure rate and downtime
 SELECT d.full_date,
        COUNT(*) readings,
        SUM(f.machine_failure)  failures,
@@ -503,7 +436,7 @@ JOIN dim_date d
 GROUP BY d.full_date
 ORDER BY d.full_date;
 
--- Q25. Weekly trend : failures, failure rate and downtime
+-- Q22. Weekly trend : failures, failure rate and downtime
 SELECT d.week_of_year,
        MIN(d.full_date) week_start,
        COUNT(DISTINCT d.date_key) days_in_week,
@@ -517,7 +450,7 @@ JOIN dim_date d ON d.date_key = f.date_key
 GROUP BY d.week_of_year
 ORDER BY d.week_of_year;
 
--- Q26. Month-over-month change (MOM)
+-- Q23. Month-over-month change (MOM)
 WITH m AS (
     SELECT d.year AS year
            ,d.month AS month
@@ -544,10 +477,10 @@ FROM m
 ORDER BY year, month;
 
 ------------------------------------------------------------
---05. ENERGY ,Production & Healthy Analysis
+--04. ENERGY ,Production & Healthy Analysis
 ------------------------------------------------------------
 
--- Q27. Which machines consume the most energy?
+-- Q24. Which machines consume the most energy?
 SELECT TOP 10
         m.machine_id
        ,m.model
@@ -561,7 +494,7 @@ GROUP BY m.machine_id
         ,m.machine_age
 ORDER BY energy_consumption_kwh DESC
 
--- Q28. Machine count distribution across production performance & Healthy segments
+-- Q25. Machine count distribution across production performance & Healthy segments
 WITH machine_status AS (
     SELECT 
         m.machine_key
@@ -592,7 +525,7 @@ FROM machine_status
 GROUP BY health_segment, production_segment
 ORDER BY health_segment, production_segment;
 
---Q29. What the highest machines healthy?
+--Q26. What the highest machines healthy?
 SELECT TOP 10
      dm.machine_id
     ,dm.machine_type
@@ -605,7 +538,7 @@ JOIN dim_machine dm ON dm.machine_key = f.machine_key
 GROUP BY dm.machine_id, dm.machine_type
 ORDER BY avg_health_score DESC;
  
---Q30. What the least machines healthy?
+--Q37. What the least machines healthy?
 SELECT TOP 10
      m.machine_id
     ,m.machine_type
@@ -621,7 +554,7 @@ ORDER BY avg_health_score ASC;
 
 
 ------------------------------------------------------------
--- 06.  Views
+-- 05.  Views
 ------------------------------------------------------------
 -- 1. Machine Performance & Health View
 
@@ -666,7 +599,7 @@ GO
 
 
 ------------------------------------------------------------
--- 07. STORED PROCEDURE
+-- 05. STORED PROCEDURE
 ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE dbo.usp_ManufacturingProcedures
     @StartDate DATE,
@@ -735,7 +668,7 @@ END;
 
 
 ------------------------------------------------------------
--- 8. EXECUTIVE KPIs QUERY
+-- 7. EXECUTIVE KPIs QUERY
 ------------------------------------------------------------
 SELECT
      COUNT(f.monitoring_id) AS total_monitoring_records
