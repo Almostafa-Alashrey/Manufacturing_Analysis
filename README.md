@@ -98,8 +98,3 @@ Open the address shown in the terminal (usually http://localhost:8501).
 
 See [`docs/PROJECT_DOCUMENTATION.md`](docs/PROJECT_DOCUMENTATION.md).
 
-## Team
-
-| Name | Role |
-|---|---|
-| _TBD_ | _TBD_ |
