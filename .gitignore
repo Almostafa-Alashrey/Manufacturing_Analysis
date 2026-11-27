@@ -1,0 +1,3 @@
+.venv/
+PROJECT_DOCUMENTATION.md
+streamlit/build_pdf.py
